@@ -5,4 +5,4 @@
 #    id 保持不变。
 - insert:
     - id: codearts-auth
-      name: 'dsh-providers-hub'
+      name: 'dsh-jethub-mobile'
