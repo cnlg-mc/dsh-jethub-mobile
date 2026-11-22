@@ -1,7 +1,7 @@
 {
   "name": "dsh-jethub-mobile",
   "version": "0.1.2",
-  "description": "Jet Hub 手机版：在 dsh-go App 里查看和管理 jet-hub 的账号、模型与渠道。基于官方 jet-hub 全部能力（多渠道适配、账号池、余额、续期、签到、网关、模型目录），加一个手机原生面板（tabs 分账号/模型/渠道，可启停账号、改昵称、删账号、切模型、切渠道）。账号数据只读不写，本体留在 ~/.dsh/.credentials.yaml。",
+  "description": "Jet Hub —— 基于官方 dsh-providers-hub，提供多渠道适配、账号池、余额、续期、签到、网关、模型目录等全部能力，界面保持官方原版。账号数据本体留在 ~/.dsh/.credentials.yaml。",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
