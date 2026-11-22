@@ -2883,6 +2883,10 @@ col.dim-jh-ledgerColAccount { width: 12.68%; }
   .dim-jh-providerSub { display: none; }
   .dim-jh-provider { width: auto; min-height: 40px; padding: 6px 10px; }
   .dim-jh-panel { padding: 14px 12px; }
+  /* 手机竖屏：账号卡片整体靠左，不再拉伸铺满整行。
+     基础规则是 width:100% 铺满；这里改自适应宽度 + margin-right:auto 贴左，
+     max-width:100% 保证长内容（凭据 / 有效期）仍不溢出容器。 */
+  .dim-jh-accountList > .dim-jh-accountCard { width: auto; max-width: 100%; margin-right: auto; }
 }
 
 /* ── 窄屏：用量浮层（聊天输入区那枚徽标展开的面板）──

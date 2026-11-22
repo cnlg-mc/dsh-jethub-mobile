@@ -1,6 +1,6 @@
 {
   "name": "dsh-jethub-mobile",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Jet Hub —— 基于官方 dsh-providers-hub，提供多渠道适配、账号池、余额、续期、签到、网关、模型目录等全部能力，界面保持官方原版。账号数据本体留在 ~/.dsh/.credentials.yaml。",
   "type": "module",
   "main": "lib/index.js",
