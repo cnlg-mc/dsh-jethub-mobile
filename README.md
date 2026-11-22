@@ -1,3 +1,19 @@
+# dsh-providers-hub（Jet Hub 手机版）
+
+## 安装（国内直连，不用代理 / git）
+
+npm 包：[**dsh-jethub-mobile**](https://www.npmjs.com/package/dsh-jethub-mobile)
+
+```sh
+dsh plugin --profile web add dsh-jethub-mobile
+```
+
+或在 DSH / dsh-go 的插件市场「添加插件」里直接输入包名 `dsh-jethub-mobile`。装完重启引擎生效。
+
+> 手机适配版：官方 jet-hub 全部功能 + dsh-go 原生面板（账号 / 模型 / 渠道，蓝紫现代 UI）。
+
+---
+
 # dsh-providers-hub
 
 > **本包原名 `dsh-codearts-auth`**（`0.2.0-rc.11` 起改名）。老用户的 DSH profile 里
