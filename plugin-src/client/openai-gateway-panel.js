@@ -71,21 +71,11 @@ import { isFilterActive, matchesModelQuery } from './model-filter.js';
 import { formatGatewayHost, gatewayHttpUrl, isLoopbackHost, isWildcardHost } from '../../src/openai-gateway/config.js';
 
 export async function copyToClipboard(value) {
-  // 1) 首选 Clipboard API（安全上下文 / 有权限时）。
-  //    ⚠️ 捕获后**必须继续降级**，不能直接 return false —— 见下方 legacyCopy 的说明。
-  try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value);
-      return true;
-    }
-  } catch {
-    // 权限被拒 / 非用户手势调用 → 落到 legacyCopy
-  }
-  // 2) 降级：execCommand('copy')
-  if (legacyCopy(value)) return true;
-  // 3) 兜底：自动复制用不了就把文本摊出来让用户自己 Ctrl+C。
-  //    ⚠️ 返回 false（自动复制确实失败，调用方该展开列表/提示），但**同时**弹窗，
-  //    保证用户在任何环境下都能拿到文本 —— 「点了没反应」比「丑一点的弹窗」糟得多。
+  // 本地改动（2026-11-20，用户要求）：**不再写入系统剪贴板**。
+  //
+  // 原实现会把密钥/地址直接写进剪贴板，用户不希望任何东西被自动放进剪贴板。
+  // 现在只走最后那条兜底：把文本摊进面板让用户自己看、自己选。
+  // 返回值保持 false —— 调用方据此提示「请手动复制」，语义没变。
   showManualCopy(value);
   return false;
 }

@@ -1,11 +1,11 @@
 {
   "name": "dsh-providers-hub",
-  "version": "0.2.1-rc.3",
-  "description": "DeepSeek Harness plugin: one hub for AI coding providers — account login, multi-account pools, silent credential refresh, credit claiming, and a local OpenAI-compatible gateway",
+  "version": "0.1.2",
+  "description": "Jet Hub 手机版：在 dsh-go App 里查看和管理 jet-hub 的账号、模型与渠道。基于官方 jet-hub 全部能力（多渠道适配、账号池、余额、续期、签到、网关、模型目录），加一个手机原生面板（tabs 分账号/模型/渠道，可启停账号、改昵称、删账号、切模型、切渠道）。账号数据只读不写，本体留在 ~/.dsh/.credentials.yaml。",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
-  "icon": "./icon.svg",
+  "icon": "icon.jpg",
   "exports": {
     ".": {
       "types": "./lib/types/index.d.ts",
@@ -21,7 +21,8 @@
     "cordis.patch.yml",
     "docs/DETAIL.md",
     "docs/DETAIL.zh.md",
-    "icon.svg"
+    "icon.svg",
+    "icon.jpg"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -29,7 +30,6 @@
     "build:assets": "node scripts/copy-assets.mjs",
     "qoder:wasm": "node scripts/extract-qoder-wasm.mjs",
     "build:all": "tsc -p tsconfig.json && node scripts/copy-assets.mjs && node plugin-src/client/build.mjs && node scripts/sync-bootstrap-lib.mjs",
-    "prepare": "tsc -p tsconfig.json && node scripts/copy-assets.mjs && node plugin-src/client/build.mjs && node scripts/sync-bootstrap-lib.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:tests": "tsc -p tsconfig.tests.json",
     "pretest": "npm run typecheck:tests",
@@ -141,5 +141,26 @@
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dshGo": {
+    "v": 1,
+    "title": {
+      "zh": "Jet Hub",
+      "en": "Jet Hub"
+    },
+    "icon": "server",
+    "contributes": {
+      "panels": [
+        {
+          "id": "jethub-mobile",
+          "title": "Jet Hub",
+          "icon": "server",
+          "placement": [
+            "session.tab",
+            "features"
+          ]
+        }
+      ]
+    }
+  }
 }

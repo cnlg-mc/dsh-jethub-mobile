@@ -1,0 +1,295 @@
+/**
+ * Raccoon Work（商汤小浣熊）协议常量与纯函数。
+ *
+ * ## 与既有 provider 的关系
+ *
+ * raccoon 是本插件第 9 个 provider，也是**第二个用「本地页承载登录」**的
+ * （第一个是 Loomy）：登录页跑在 `127.0.0.1` 的临时 HTTP 服务上，
+ * 页面内联渲染二维码与短信表单，宿主侧持有全部敏感状态。
+ *
+ * ## 三个必须记住的坑
+ *
+ * 1. **官方桌面端的登录链路不可复用**：它靠 `office-raccoon://auth/callback`
+ *    自定义协议回调，而本插件是宿主侧 Node 进程，收不到该回调；且
+ *    `/code/authorize` 页面的回调地址是**写死的**，改不成 localhost。
+ *    故改为「客户端本地生成 code + 自行轮询」—— 实测任意自造 code 都被接受。
+ * 2. **手机号必须 AES-128-CFB 加密**（密钥见 `RACCOON_PHONE_CIPHER_SECRET`），
+ *    否则 `send_sms` 回 `100003 params_encryted_error`。
+ * 3. **每日 300 积分的触发器在「办公端」**，不在 points 前缀 —— 见
+ *    {@link RACCOON_OFFICE_PREFIX}（那里有 2026-11-15 的完整实测记录）。
+ */
+/** API 基址。 */
+export declare const RACCOON_API_BASE = "https://xiaohuanxiong.com";
+/** 认证端点前缀。 */
+export declare const RACCOON_AUTH_PREFIX = "/api/web/auth/v1";
+/** 推理与模型目录前缀。 */
+export declare const RACCOON_LLM_PREFIX = "/api/web/llm/v2";
+/** 积分端点前缀。 */
+export declare const RACCOON_POINTS_PREFIX = "/api/web/points/v1";
+/** 桌面端端点前缀（含一次性登录奖励）。 */
+export declare const RACCOON_DESKTOP_PREFIX = "/api/web/desktop/v1";
+/**
+ * 积分**账单**前缀（v2）。
+ *
+ * ## ⚠️ 为什么账单必须走 v2
+ *
+ * v1（{@link RACCOON_POINTS_PREFIX}）的 `/bills` 按时间倒序返回**全部**记录
+ * （对话消耗 `desktop` 与发放 `daily_grant` / `reward_grant` 混在一起）。
+ * 2026-11-15 用 3 个真实账号实测：`paging.limit=50` 的 50 条**全是**
+ * `daily_grant` + `desktop`，`reward_grant` **一条都没有** ⇒ 用 v1 判
+ * 「登录奖励是否已领」时，明明领过的账号也会被判成「未领取」。
+ *
+ * v2 支持 `type=income|expense|all` 只取发放记录（实测 `income` 下 3~4 条
+ * `reward_grant` 一条不少），故账单判据一律走这里。
+ */
+export declare const RACCOON_POINTS_V2_PREFIX = "/api/web/points/v2";
+/**
+ * 办公端前缀 —— **每日积分的真正触发器**。
+ *
+ * ## ⚠️⚠️ 「Raccoon 没有签到端点」是**漏查**得出的旧结论
+ *
+ * `/points/v1` 与 `/points/v2` 下的 `sign_in` / `check_in` / `daily` /
+ * `claim` / `attendance` 确实全是 Go mux 的 `404 page not found`
+ * （2026-11-15 用真实 token 逐个复验，HTTP 404 + 纯文本 `404 page not found`）。
+ * 但每日积分的触发器根本不在 points 前缀下，而在**办公端**：
+ *
+ * ```
+ * GET /api/web/office/v3/setting_info     （只读 GET，按天幂等）
+ *   Authorization: Bearer <access_token>
+ *   X-Client-Platform: desktop-windows
+ *   X-Client-Version: v1.0.35
+ *   X-Raccoon-Language: zh
+ * ```
+ *
+ * 该端点的本职是「拉办公端设置」（空间用量、每日提问次数…），但服务端在处理它时
+ * **顺带结算当日每日积分**：2026-11-16 00:14（UTC+8，刚跨日）对 3 个真实账号
+ * 各调一次，三个账号的 `available_points` 全部 **+300**，`daily_points` 同步 +300，
+ * 响应里带 `point_grant_popups: [{source:"daily", display_name:"每日积分发放",
+ * points:300, expire_at:"2026-11-22T23:59:59+08:00"}]`；紧接着再调一次 ⇒
+ * `popups: []`、余额不变（**按天幂等**，重复调用不会多发）。
+ *
+ * ⇒ 这与「服务端按日自动发放、无需客户端」**并不矛盾**：自动发放是服务端的
+ * 权利，而这条 GET 是**客户端每天帮它结算一次**的入口；两者叠加的效果是
+ * 「用官方客户端就是每天到账，纯 API 用户不调它就可能漏发」。
+ */
+export declare const RACCOON_OFFICE_PREFIX = "/api/web/office/v3";
+/**
+ * 手机号传输层加密密钥。
+ *
+ * ⚠️ 这是**公开常量**（客户端把它硬编码在前端 bundle 里），只用于防止手机号
+ * 明文出现在日志/代理里，**不是安全边界**。故放在本文件不引入新的泄露面。
+ * 与 Loomy 的 AccessKey 同性质。
+ */
+export declare const RACCOON_PHONE_CIPHER_SECRET = "senseraccoon2023";
+/**
+ * 续期提前窗口（秒）。
+ *
+ * 照抄官方 `scheduleAuth.js` 的 `TOKEN_REFRESH_WINDOW_SECONDS = 300`：
+ * access_token 寿命约 3 小时（实测 `exp - nbf = 10805s`），提前 5 分钟刷新
+ * 可避免边界失败。
+ */
+export declare const RACCOON_TOKEN_REFRESH_WINDOW_SECONDS = 300;
+/** 请求超时（毫秒）。 */
+export declare const RACCOON_REQUEST_TIMEOUT_MS = 60000;
+/**
+ * 扫码轮询间隔（毫秒）—— **仅当服务端未下发 `poll_interval` 时的兜底**。
+ *
+ * 2026-11-14 起服务端在签发二维码时一并下发 `poll_interval`（实测 2 秒），
+ * 页面按它设轮询周期；这个常量只是防御（老版本服务端 / 字段缺失）。
+ */
+export declare const RACCOON_QR_POLL_INTERVAL_MS = 2000;
+/**
+ * IAM 服务前缀。
+ *
+ * ⚠️⚠️ **与业务 API 前缀（`product.authApiPrefix = /api/web/auth/v1`）是两个不同的
+ * 东西**，别混用：扫码登录在 2026-11-14 前后整体迁到了 IAM。
+ *
+ * 依据：官网 `/login` 的渲染数据里 `qrOrigin: "https://xiaohuanxiong.com/"`，
+ * 而登录组件的 `t()` 请求函数 `baseUrl: "/api/iam/v1"`（chunk `1919-…`）。
+ * 实测 `POST https://xiaohuanxiong.com/api/iam/v1/auth/mp/qrcode` ⇒ 200。
+ */
+export declare const RACCOON_IAM_PREFIX = "/api/iam/v1";
+/** IAM 签发扫码二维码的路径（`POST`，服务端生成 `qrcode_code`）。 */
+export declare const RACCOON_IAM_QR_CREATE_PATH = "/auth/mp/qrcode";
+/** IAM 轮询扫码状态的路径（`POST`）。 */
+export declare const RACCOON_IAM_QR_LOGIN_PATH = "/auth/mp/qrcode/login";
+/**
+ * IAM 信封的成功码。
+ *
+ * ⚠️⚠️ 与业务 API 的成功码**不是同一个类型**：业务 API 是 `{ code: 0 }`（数字），
+ * IAM 是 `{ code: 'OK' }`（字符串），且多一个 `request_id`。两套信封必须分开解析
+ * （`parseIamEnvelope` 与 `parseEnvelope`），混用会让文案与分类双双错位。
+ */
+export declare const RACCOON_IAM_OK_CODE = "OK";
+/** IAM 的二维码失效码（轮询时下发，HTTP 401）。 */
+export declare const RACCOON_IAM_QR_INVALID_CODE = "AUTH_QRCODE_INVALID";
+/**
+ * 二维码**真的**过期时 IAM 回的码（HTTP **410**）。
+ *
+ * ⚠️⚠️ 与上面的 `AUTH_QRCODE_INVALID`（HTTP 401）**是两个不同的码，不能合并**：
+ * - `401 AUTH_QRCODE_INVALID`：传进来的 code 根本不是 IAM 签发的（乱码/伪造）。
+ * - `410 AUTH_QRCODE_EXPIRED`：这张票**曾经**有效，但已经过了 `expires_in`。
+ *
+ * 2026-11-15 真机实测：签一张真票后等它自然到期，`t+305s` 回
+ * `HTTP 410 {"code":"AUTH_QRCODE_EXPIRED","message":"mini-program QR code expired"}`。
+ * 只认 401 会让「票过期」被当成「继续等」⇒ 页面转圈到 5 分钟超时（Gitee IKVA90 残留症状）。
+ *
+ * 本仓曾经在这条上写错过：注释引用了正确的 `AUTH_QRCODE_EXPIRED`，常量却写成
+ * `AUTH_QRCODE_INVALID`（对抗审计 P0-1 抓出）。
+ */
+export declare const RACCOON_IAM_QR_EXPIRED_CODE = "AUTH_QRCODE_EXPIRED";
+/** 扫码登录整体超时（毫秒）。 */
+export declare const RACCOON_LOGIN_TIMEOUT_MS: number;
+/**
+ * 扫码状态机的状态值。
+ *
+ * ⚠️ 这张表**只放服务端真的会下发的状态值**（pending / logging / canceled / success）。
+ * `expired` 不在这里：它是**我们**合成的轮询终态（IAM 回 `AUTH_QRCODE_INVALID`
+ * （HTTP 401）或 `AUTH_QRCODE_EXPIRED`（HTTP 410）时），官方前端同样把它映射成
+ * `expired` 分支（chunk `5348` 的 `"AUTH_QRCODE_EXPIRED"===e.code?"expired":"failed"`），
+ * 体验上等价。放进这张表会让「服务端下发了 expired」这个错误前提看起来成立。
+ */
+export declare const RACCOON_QR_STATUS: {
+    readonly pending: "pending";
+    readonly logging: "logging";
+    readonly canceled: "canceled";
+    readonly success: "success";
+};
+/**
+ * raccoon 凭据。
+ *
+ * ⚠️ `access_token` 字段名**必须**是这个 ——
+ * `AccountPool.findAccountIdByCredential` 对非 `codearts` 的 provider
+ * 统一取该字段作身份标识。
+ */
+export interface RaccoonCredential {
+    /** JWT（服务端下发）。 */
+    access_token: string;
+    /** 续期用（服务端下发）。 */
+    refresh_token: string;
+    /** 过期时间（**毫秒时间戳字符串**），由 JWT 的 exp 推算。 */
+    expires_at?: string;
+    /** `personal` 或组织码。 */
+    office_identity?: string;
+    /** 用户 id。 */
+    user_id?: string;
+    /**
+     * 展示用昵称。
+     *
+     * ⚠️ **服务端的 `name` 是自动生成的默认名**（实测本机账号为 `RaccoonAva`，
+     * 即「Raccoon」+ 随机串），微信扫码**不回传微信昵称**
+     *（`wechat_bindings` 只有绑定 id 与时间）。故它**不适合做多账号区分** ——
+     * 详见 `src/jet-hub-rpc.ts` 的昵称回填逻辑。
+     */
+    nickname?: string;
+    /**
+     * 绑定/注册的手机号（远端 `user_info.phone`）。
+     *
+     * 用于**多账号消歧**：昵称是通用默认名时，手机号尾号是唯一可靠的区分依据。
+     */
+    phone?: string;
+    /** 设备指纹（32 位 hex），用于 `X-Client-Device-ID`。 */
+    device_id?: string;
+}
+/**
+ * 解码 JWT payload 的 `exp`，换算成**毫秒**时间戳。
+ *
+ * ⚠️ 只解码、**不验签** —— 我们只需要知道什么时候该续期，签名由服务端校验。
+ * ⚠️ 任何解析失败都返回 `undefined` 而**不抛错**：凭据可能被手工改坏，
+ * 那时应当降级成「无过期信息」（宁可试一次），而不是让整个 provider 崩。
+ */
+export declare function decodeJwtExpMs(token: string): number | undefined;
+/**
+ * 解析凭据的过期时刻（毫秒）。
+ *
+ * 取值优先级：`expires_at`（显式字段）→ **JWT 的 `exp`**。
+ *
+ * ⚠️ **回退到 JWT 是必需的，不是锦上添花**：`expires_at` 是可选字段，
+ * 老凭据或手工导入的凭据可能没有它。只读 `expires_at` 会让过期判定
+ * **恒为 false**，于是 `refreshAll` 永远跳过这些账号 —— 表现为
+ * 「凭据悄悄过期、续期从不触发」，与 AGENTS.md 里「续期按 enabled 过滤」
+ * 那次缺陷是同一类（静默失效，无任何报错）。
+ */
+export declare function raccoonCredentialExpiresAtMs(credential: RaccoonCredential): number | undefined;
+/**
+ * 凭据是否已过期。
+ *
+ * 无任何过期信息（既无 `expires_at` 也不是 JWT）时视为**不过期**：
+ * 宁可用一个可能过期的凭据去试（服务端会回 401，我们能识别并续期），
+ * 也不要凭猜测阻止用户使用。
+ */
+export declare function isRaccoonExpired(credential: RaccoonCredential): boolean;
+/**
+ * 凭据是否可静默续期。
+ *
+ * 判据是 `refresh_token` 非空 —— raccoon **有** refresh 端点
+ * （`POST /api/web/auth/v1/refresh`），与 Loomy（恒 false）不同。
+ */
+export declare function isRaccoonRefreshable(credential: RaccoonCredential): boolean;
+/**
+ * 加密手机号，供 `send_sms` / `login_with_sms` 使用。
+ *
+ * 算法照抄客户端（渲染层模块 68284 的 `yv()`）：
+ *
+ * ```
+ * key   = UTF8("senseraccoon2023")  → 16 字节 ⇒ AES-128
+ * iv    = 随机 16 字节
+ * mode  = CFB, padding = NoPadding
+ * 输出  = Base64(iv ‖ ciphertext)
+ * ```
+ *
+ * ⚠️ 必须**显式**写 `aes-128-cfb`：密钥是 16 字节，写成 `aes-256-cfb` 会因
+ * 长度不足而抛错（不会自动补齐）。
+ * ⚠️ 填充语义已实测：CFB 是流密码，`setAutoPadding(true/false)` 输出**完全一致**
+ * （11 字节手机号两种设置下密文都是 11 字节）。这里显式关掉以对齐 CryptoJS
+ * 的 `NoPadding`，避免读者误以为有填充。
+ *
+ * @param iv 仅供单测注入固定值；生产路径省略（随机）。
+ */
+export declare function encryptRaccoonPhone(phone: string, iv?: Buffer): string;
+/** 远端模型条目中本插件关心的字段。 */
+export interface RaccoonModelMeta {
+    /** 模型 id（发给 `chat/completions` 的 `model`）。 */
+    id: string;
+    /** 展示名主体（远端 `description`）。 */
+    description: string;
+    /** **当前生效**倍率（远端 `billing_effective_multiplier`）。 */
+    effectiveMultiplier: number;
+    /** 原价倍率（远端 `billing_multiplier`）。 */
+    baseMultiplier: number;
+    /** 计费状态。 */
+    status: 'normal' | 'discount' | 'limited_free';
+    /** 状态角标文案（远端 `billing_status_note`，如「限免一个月」）。 */
+    statusNote: string;
+}
+/**
+ * 最终展示名：`GLM-5-3 · x0.75` / `SenseNova-6.8-Flash · 免费` /
+ * `GLM-5-3-Flash · x0.2→x0.1` / `Kimi-K3 · x1`。
+ *
+ * ⚠️ 倍率必须拼进 `name`（**不是** `description`）：composer 的模型切换菜单
+ * 只渲染 `name`，`description` 仅用于 `/model` 弹窗。这是被用户报障纠正过的结论。
+ *
+ * ⚠️ **1 倍也要显示**（真实缺陷，用户报障：「为什么 Kimi-K3 没有倍率，
+ * ide 是 1 倍，1 倍也要显示倍率」）。早期按「1 倍是默认，显示属噪声」省略它，
+ * 结果该模型在列表里**看起来没有计费信息** —— 用户无法区分
+ * 「它就是 1 倍」与「我们没取到它的倍率」。IDE 的模型选择器同样显示「1 倍」，故对齐。
+ *
+ * 三条展示规则：
+ * - 生效价为 **0** → 显示「免费」（**不是** `x0`）；
+ * - 生效价 **严格小于**原价 → 显示 `x原价→x折后价`（箭头比「（促销 …）」短，
+ *   适合窄菜单；与 TRAE/buddy 的形态统一）；
+ * - 其余（**含 1 倍**）→ 显示 `x生效价`。
+ */
+export declare function raccoonDisplayName(model: RaccoonModelMeta): string;
+/**
+ * 业务端点请求头。
+ *
+ * 依据客户端 `createHeaders()`。`X-Client-Platform` 对
+ * `desktop/v1/login/points/grant` **必需**（取值必须是
+ * `desktop-windows` / `desktop-macos` / `desktop-linux`）。
+ */
+export declare function raccoonHeaders(credential: RaccoonCredential, opts?: {
+    platform?: string;
+    version?: string;
+}): Record<string, string>;
+//# sourceMappingURL=raccoon.d.ts.map

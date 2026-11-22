@@ -2,7 +2,7 @@ docs/superpowers
 # 流程进度 ledger（subagent-driven-development 的断点恢复记录），同属过程产物不入库
 .superpowers/
 node_modules/
-lib/
+# lib/ 已纳入版本控制（compiled 产物随包发布，避免 git 安装时跑 prepare）
 *.tsbuildinfo
 
 # e2e 运行产物与临时脚本
@@ -183,3 +183,6 @@ docs/audit/
 
 # watcher 的隔离工作区（每个只能存在一份，是独立 git worktree，绝不能进版本库）
 .dsh-zhuli/
+
+# lib 里只要运行时产物，排除调试/源文件
+lib/**/*.map

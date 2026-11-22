@@ -3016,6 +3016,111 @@ col.dim-jh-ledgerColAccount { width: 12.68%; }
 /* 自家渠道：颜色是**上游 hex 原话**（内联 style 覆盖上面这组），缺色时
    落 neutral。上游发什么色就画什么色，插件不做二次创作。 */
 .dim-jh-modelPromoChip[data-tone='upstream'] { color: var(--dsw-alias-status-success); background: color-mix(in srgb, var(--dsw-alias-status-success) 12%, transparent); border-color: color-mix(in srgb, var(--dsw-alias-status-success) 24%, transparent); }
+
+/* ═══════════════════════════════════════════════════════════════
+   本地适配 · 蓝紫渐变现代风（放在最后，覆盖出厂样式）
+   ═══════════════════════════════════════════════════════════════ */
+.dim-jh-page,
+.dim-jh-panelHost {
+  --jh-brand-1: #4f46e5;
+  --jh-brand-2: #7c3aed;
+  --jh-brand-3: #2563eb;
+  --jh-grad: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #2563eb 100%);
+  --jh-grad-soft: linear-gradient(135deg, rgba(79,70,229,.12) 0%, rgba(124,58,237,.10) 50%, rgba(37,99,235,.12) 100%);
+}
+
+/* 主按钮：蓝紫渐变 + 柔光阴影 */
+.dim-jh-btn[data-kind='primary'],
+.dim-jh-page .dim-jh-btn[data-kind='primary'] {
+  background: var(--jh-grad) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(99,102,241,.32);
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+.dim-jh-btn[data-kind='primary']:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 20px rgba(124,58,237,.42);
+  transform: translateY(-1px);
+}
+.dim-jh-btn[data-kind='primary']:active:not(:disabled) { transform: translateY(0); }
+
+/* 频道 / 渠道卡：选中态渐变描边 */
+.dim-jh-provider[aria-selected='true'] {
+  border-color: var(--jh-brand-2) !important;
+  background: var(--jh-grad-soft) !important;
+  color: var(--jh-brand-2) !important;
+  box-shadow: 0 4px 16px rgba(99,102,241,.14) !important;
+}
+.dim-jh-provider:hover {
+  border-color: rgba(124,58,237,.4) !important;
+  background: var(--jh-grad-soft) !important;
+}
+
+/* 置顶渠道卡渐变背景 */
+.dim-jh-provider--pinned {
+  background: var(--jh-grad-soft) !important;
+  border-color: rgba(124,58,237,.35) !important;
+}
+
+/* 账号卡：圆角 + 悬浮抬升 */
+.dim-jh-accountCard {
+  border-radius: 14px !important;
+  transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease;
+}
+.dim-jh-accountCard:hover {
+  border-color: rgba(124,58,237,.4) !important;
+  box-shadow: 0 8px 24px rgba(99,102,241,.16) !important;
+  transform: translateY(-2px);
+}
+
+/* 总余额数字：紫色（不用透明文字，兼容所有 WebView） */
+.dim-jh-creditTotal {
+  color: #6d28d9 !important;
+  font-weight: 700;
+}
+
+/* 分区卡片统一圆角与柔和阴影 */
+.dim-jh-card,
+.dim-jh-section,
+.dim-jh-panel {
+  border-radius: 14px !important;
+  box-shadow: 0 2px 12px rgba(31,35,41,.04);
+}
+
+/* 顶部标题带：渐变底纹 */
+.dim-jh-page::before {
+  content: '';
+  display: block;
+  height: 3px;
+  margin: -8px 0 12px;
+  border-radius: 3px;
+  background: var(--jh-grad);
+  opacity: .9;
+}
+
+/* 标签 chip 选中态 */
+.dim-jh-accountTag[aria-selected='true'],
+.dim-jh-accountTag[data-active='true'] {
+  background: var(--jh-grad-soft) !important;
+  border-color: rgba(124,58,237,.45) !important;
+  color: var(--jh-brand-2) !important;
+}
+
+/* 开关 / 复选主色 */
+.dim-jh-page input[type='checkbox']:checked,
+.dim-jh-page [role='switch'][aria-checked='true'] {
+  accent-color: var(--jh-brand-2) !important;
+}
+
+/* 滚动条美化 */
+.dim-jh-page ::-webkit-scrollbar { width: 8px; height: 8px; }
+.dim-jh-page ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #a5b4fc, #c4b5fd);
+  border-radius: 8px;
+}
+.dim-jh-page ::-webkit-scrollbar-track { background: transparent; }
+
 `
 
 
