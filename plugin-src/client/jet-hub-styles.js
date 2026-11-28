@@ -2887,6 +2887,36 @@ col.dim-jh-ledgerColAccount { width: 12.68%; }
      基础规则是 width:100% 铺满；这里改自适应宽度 + margin-right:auto 贴左，
      max-width:100% 保证长内容（凭据 / 有效期）仍不溢出容器。 */
   .dim-jh-accountList > .dim-jh-accountCard { width: auto; max-width: 100%; margin-right: auto; }
+  /* 竖屏弹窗：遮罩内边距 + border-box，救回被 padding 吃掉的内容宽。
+     基础 .dim-jh-modalOverlay 左右各 24px padding，而 .dim-jh-modal 是 content-box
+     且 width:min(560px,100%) —— 360px 手机上弹窗宽解析成 312px，再扣自身左右各
+     22px padding，内容区只剩 268px（用量表格弹窗更挤），搜索框 140px + 状态按钮
+     被迫多折一行、9 列明细节只能横滑。这里把遮罩内边距收到 8px，并让弹窗用
+     border-box + width:100% 把 padding 包含进宽度 ⇒ 内容区恢复到 316px。
+     ⚠️ 只写 box-sizing / width / padding 三条，max-height、min-height、圆角、
+     阴影等全部继承基础规则；宽屏（>720px）这段不生效，逐字不动。 */
+  .dim-jh-modalOverlay { padding: 8px; }
+  .dim-jh-modal { box-sizing: border-box; width: 100%; padding: 14px 14px; }
+  .dim-jh-modal--ledger { box-sizing: border-box; width: 100%; padding: 12px 10px; }
+  /* 竖屏用量浮层：账号行在 323px 内宽里重新分配。
+     窄屏浮层 portal 到 body 后实际宽度 = 视口 − 16px，360px 手机扣掉自身
+     padding 后内容宽只有 323px。基础规则里账号标识列写死 170px，是按宽屏
+     530px 弹窗（内宽 509px = 170 + 尾段 336）算的 —— 在 323px 里它会吃掉
+     53%，尾段只剩 153px 而实际要 336px ⇒ 长期/短期/临期/倒计时被整段截掉，
+     用户只看得到「位次 N · 名字 · 总7…」。这里让标识列收缩（最多四成），
+     并把分档段降到 10px/18px 行高，尾段才挤得进窄屏。宽屏路径逐字不动。 */
+  .dim-jh-badgeColId { width: auto; max-width: 40%; }
+  .dim-jh-badgeRowNoteInline > .dim-jh-badgeNotePart,
+  .dim-jh-badgeRowNoteInline > .dim-jh-badgeNoteSep { font-size: 10px; line-height: 18px; }
+  /* 窗口行第 4 列倒计时原写死 100px，320px 档会把进度条压到 60px 下限后溢出；
+     改成弹性下限并把浮层横向裁掉（只有 overflow-y:auto 时会出横向滚动条）。 */
+  .dim-jh-badgeWins { grid-template-columns: max-content minmax(40px, 1fr) max-content minmax(64px, 88px); }
+  .dim-jh-badgePop { overflow-x: hidden; }
+  /* 工具行：兑现「极窄换行」的兜底注释（基础规则 nowrap + row-gap 对单行无效）。 */
+  @media (max-width: 400px) {
+    .dim-jh-badgeToolbar { flex-wrap: wrap; }
+    .dim-jh-badgeToolbarPref { margin-left: auto; }
+  }
 }
 
 /* ── 窄屏：用量浮层（聊天输入区那枚徽标展开的面板）──
@@ -3027,7 +3057,7 @@ col.dim-jh-ledgerColAccount { width: 12.68%; }
 
 
 /**
- * 本插件的**包 id** —— 必须等于 package.json 的 name（当前 dsh-providers-hub）。
+ * 本插件的**包 id** —— 必须等于 package.json 的 name（当前 dsh-jethub-mobile）。
  *
  * ⚠️ 它同时是宿主 claimStyles / removeOwnedStyles 用的 ownerId
  * （dsh-client-modules 的 stripClientSuffix(registration.id)），
@@ -3044,7 +3074,7 @@ col.dim-jh-ledgerColAccount { width: 12.68%; }
  * ⚠️ 上面这段注释**刻意不写反引号**：紧邻其上的 STYLES 是模板字符串，
  * 注释里出现反引号会提前闭合它（AGENTS.md 明令禁止；本文件已有四个用例在守）。
  */
-const PLUGIN_ID = 'dsh-providers-hub'
+const PLUGIN_ID = 'dsh-jethub-mobile'
 
 /** 样式标签的资源标识（宿主 data-plugin-css 的语义，见下）。 */
 const STYLE_TAG_ID = PLUGIN_ID + '/jet-hub.css'
